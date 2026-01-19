@@ -16,16 +16,6 @@ A browser extension for Microsoft Edge that automatically groups tabs by domain,
 - **Persistent Marks**: Important URLs remain marked even after closing and reopening
 - **Optimized Performance**: Fast batch operations for smooth tab organization
 
-## Installation
-
-### Developer Mode (Testing)
-
-1. Open Microsoft Edge and go to `edge://extensions/`
-2. Enable "Developer mode" (toggle in top right)
-3. Click "Load unpacked"
-4. Select the `tab-organizer` folder
-5. The extension is now installed and ready to use
-
 ### Usage
 
 **Manual Organization:**
@@ -83,81 +73,10 @@ A browser extension for Microsoft Edge that automatically groups tabs by domain,
 - `github.com`, `gist.github.com` → Group "github.com"
 - Also works with country-specific TLDs: `example.co.uk`, `www.example.co.uk` → Group "example.co.uk"
 
-## Project Structure
-
-```
-tab-organizer/
-├── manifest.json       # Extension configuration
-├── popup.html          # User interface
-├── popup.css           # Styling
-├── popup.js            # Manual organization
-├── background.js       # Automatic organization in background
-├── icons/              # Extension icons
-│   ├── icon16.png
-│   ├── icon48.png
-│   └── icon128.png
-└── README.md           # This file
-```
-
-## Technical Details
-
-- **Manifest Version**: 3
-- **Permissions**: 
-  - `tabs`: For reading and manipulating tabs
-  - `tabGroups`: For creating and managing tab groups
-  - `storage`: For storing Important URLs
-- **Languages**: JavaScript, HTML, CSS
-
-## How It Works
-
-**Important URLs:**
-1. URLs are marked as "Important" via button
-2. Important URLs are stored in chrome.storage.local
-3. During organization these URLs always end up in the "Important" group
-4. Persistence: URLs remain marked even when tabs are closed
-
-**Manual Organization (popup.js):**
-1. The extension reads all open tabs in the current window
-2. Tabs are grouped by their domain (hostname)
-3. Important URLs are identified and separated
-4. Duplicates (same URL) are identified and closed
-5. Domains with multiple tabs are grouped, single tabs go to "Unsorted"
-6. Domains and tabs are sorted alphabetically
-7. Tabs are moved in optimized batch operations
-8. Tab groups are created with domain names and colors
-
-**Automatic Organization (background.js):**
-1. Service worker listens for new or updated tabs
-2. After 2 second delay (debounce) organization is started
-3. Important URLs are automatically recognized and sorted into the Important group
-4. All tabs are moved in parallel batch operations
-5. All groups are created in parallel for maximum speed
-6. Optimized to minimize browser API calls
-
-## Notes
-
-- URLs like `chrome://` or `edge://` cannot be grouped (browser restriction)
-- Automatic organization occurs with 2 second delay to bundle multiple tab changes
-- Single tabs (domain appears only once) are collected in the "Unsorted" group
-- The extension is highly optimized for fast performance with parallel batch operations
-- All move and grouping operations are executed in parallel for maximum speed
-- **Important marking is instant**: Marking/unmarking tabs as Important uses a fast single-tab operation without triggering full reorganization
-- **Batch tab closing**: Closing tabs is done in batches of 20 with progress updates to prevent browser freezing
-- Full reorganization only happens when you click "Organize Now" or when new tabs are opened
-- Hover over the extension icon to see a larger tooltip with the exact tab count
-
-## Customization
-
-You can customize the extension to your preferences:
-
-- **Change colors**: In `popup.js` and `background.js` in the `colors` array
-- **Styling**: In `popup.css`
-- **Sorting**: Adapt the `sort()` functions in `popup.js` and `background.js`
-
 ## Version
 
 Current Version: 0.1.0
 
 ## License
 
-Free to use for personal and commercial purposes.
+Creative Commons Attribution-NonCommercial 4.0 International (CC BY-NC 4.0).
