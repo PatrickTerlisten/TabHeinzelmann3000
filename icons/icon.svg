@@ -1,0 +1,12 @@
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <rect width="128" height="128" rx="20" fill="#0078d4"/>
+  <g fill="white">
+    <!-- Tabs Symbol -->
+    <rect x="20" y="25" width="35" height="25" rx="3"/>
+    <rect x="60" y="25" width="35" height="25" rx="3"/>
+    <rect x="20" y="55" width="35" height="25" rx="3"/>
+    <rect x="60" y="55" width="35" height="25" rx="3"/>
+    <rect x="20" y="85" width="35" height="25" rx="3"/>
+    <rect x="60" y="85" width="35" height="25" rx="3"/>
+  </g>
+</svg>
