@@ -34,14 +34,17 @@ document.addEventListener('DOMContentLoaded', function() {
   markCurrentBtn.addEventListener('click', async function() {
     try {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      const result = await chrome.storage.local.get(['importantUrls']);
-      const importantUrls = result.importantUrls || [];
+      const url = new URL(tab.url);
+      const domain = getRootDomain(url.hostname);
       
-      if (importantUrls.includes(tab.url)) {
-        // URL is already marked - remove it
-        await removeImportantUrl(tab.url);
+      const result = await chrome.storage.local.get(['importantDomains']);
+      const importantDomains = result.importantDomains || [];
+      
+      if (importantDomains.includes(domain)) {
+        // Domain is already marked - remove it
+        await removeImportantDomain(domain);
         statusDiv.className = 'status success';
-        statusDiv.textContent = 'Tab removed from Important!';
+        statusDiv.textContent = `Domain ${domain} removed from Important!`;
         markCurrentBtn.textContent = 'Mark Current Tab as Important';
         
         // Quick remove without full reorganization
@@ -50,10 +53,10 @@ document.addEventListener('DOMContentLoaded', function() {
           tabId: tab.id
         });
       } else {
-        // Mark URL
-        await addImportantUrl(tab.url);
+        // Mark domain
+        await addImportantDomain(domain);
         statusDiv.className = 'status success';
-        statusDiv.textContent = 'Tab marked as Important!';
+        statusDiv.textContent = `Domain ${domain} marked as Important!`;
         markCurrentBtn.textContent = 'Remove Important Mark';
         
         // Quick move without full reorganization
@@ -89,11 +92,19 @@ document.addEventListener('DOMContentLoaded', function() {
 
       // Get all tabs in current window
       const tabs = await chrome.tabs.query({ currentWindow: true });
-      const result = await chrome.storage.local.get(['importantUrls']);
-      const importantUrls = result.importantUrls || [];
+      const result = await chrome.storage.local.get(['importantDomains']);
+      const importantDomains = result.importantDomains || [];
       
-      // Find tabs to close (all except Important URLs)
-      const tabsToClose = tabs.filter(tab => !importantUrls.includes(tab.url)).map(tab => tab.id);
+      // Find tabs to close (all except Important domains)
+      const tabsToClose = tabs.filter(tab => {
+        try {
+          const url = new URL(tab.url);
+          const domain = getRootDomain(url.hostname);
+          return !importantDomains.includes(domain);
+        } catch (error) {
+          return false; // Keep tabs with invalid URLs
+        }
+      }).map(tab => tab.id);
       
       if (tabsToClose.length === 0) {
         statusDiv.className = 'status success';
@@ -136,10 +147,13 @@ document.addEventListener('DOMContentLoaded', function() {
   async function checkCurrentTab() {
     try {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      const result = await chrome.storage.local.get(['importantUrls']);
-      const importantUrls = result.importantUrls || [];
+      const url = new URL(tab.url);
+      const domain = getRootDomain(url.hostname);
       
-      if (importantUrls.includes(tab.url)) {
+      const result = await chrome.storage.local.get(['importantDomains']);
+      const importantDomains = result.importantDomains || [];
+      
+      if (importantDomains.includes(domain)) {
         markCurrentBtn.textContent = 'Remove Important Mark';
         markCurrentBtn.style.backgroundColor = '#fde7e9';
         markCurrentBtn.style.borderColor = '#d13438';
@@ -150,64 +164,72 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 
-  async function addImportantUrl(url) {
-    const result = await chrome.storage.local.get(['importantUrls']);
-    const importantUrls = result.importantUrls || [];
+  async function addImportantDomain(domain) {
+    const result = await chrome.storage.local.get(['importantDomains']);
+    const importantDomains = result.importantDomains || [];
     
-    if (!importantUrls.includes(url)) {
-      importantUrls.push(url);
-      await chrome.storage.local.set({ importantUrls: importantUrls });
+    if (!importantDomains.includes(domain)) {
+      importantDomains.push(domain);
+      await chrome.storage.local.set({ importantDomains: importantDomains });
     }
   }
 
   async function loadImportantUrls() {
-    const result = await chrome.storage.local.get(['importantUrls']);
-    const importantUrls = result.importantUrls || [];
+    const result = await chrome.storage.local.get(['importantDomains']);
+    const importantDomains = result.importantDomains || [];
     
-    if (importantUrls.length === 0) {
-      importantList.innerHTML = '<div class="empty-message">No Important URLs marked</div>';
+    if (importantDomains.length === 0) {
+      importantList.innerHTML = '<div class="empty-message">No Important domains marked</div>';
       return;
     }
     
     importantList.innerHTML = '';
-    for (const url of importantUrls) {
+    for (const domain of importantDomains) {
       const item = document.createElement('div');
       item.className = 'important-item';
       
-      const urlSpan = document.createElement('span');
-      urlSpan.className = 'important-url';
-      urlSpan.textContent = url;
-      urlSpan.title = url;
+      const domainSpan = document.createElement('span');
+      domainSpan.className = 'important-url';
+      domainSpan.textContent = domain;
+      domainSpan.title = domain;
       
       const removeBtn = document.createElement('button');
       removeBtn.className = 'btn-remove';
       removeBtn.textContent = 'Remove';
       removeBtn.addEventListener('click', async () => {
-        await removeImportantUrl(url);
+        await removeImportantDomain(domain);
         await loadImportantUrls();
         await checkCurrentTab();
         
-        // Find tab with this URL and remove from Important group
-        const tabs = await chrome.tabs.query({ url: url });
-        if (tabs.length > 0) {
-          await chrome.runtime.sendMessage({ 
-            action: 'removeFromImportant',
-            tabId: tabs[0].id
-          });
+        // Find all tabs with this domain and remove from Important group
+        const tabs = await chrome.tabs.query({});
+        for (const tab of tabs) {
+          try {
+            const url = new URL(tab.url);
+            const tabDomain = getRootDomain(url.hostname);
+            if (tabDomain === domain) {
+              await chrome.runtime.sendMessage({ 
+                action: 'removeFromImportant',
+                tabId: tab.id
+              });
+            }
+          } catch (error) {
+            // Skip invalid URLs
+          }
         }
       });
       
-      item.appendChild(urlSpan);
+      item.appendChild(domainSpan);
       item.appendChild(removeBtn);
       importantList.appendChild(item);
     }
   }
 
-  async function removeImportantUrl(url) {
-    const result = await chrome.storage.local.get(['importantUrls']);
-    const importantUrls = result.importantUrls || [];
-    const filtered = importantUrls.filter(u => u !== url);
-    await chrome.storage.local.set({ importantUrls: filtered });
+  async function removeImportantDomain(domain) {
+    const result = await chrome.storage.local.get(['importantDomains']);
+    const importantDomains = result.importantDomains || [];
+    const filtered = importantDomains.filter(d => d !== domain);
+    await chrome.storage.local.set({ importantDomains: filtered });
   }
 });
 
@@ -242,9 +264,9 @@ async function organizeTabs() {
   // Get all tabs in the current window
   const tabs = await chrome.tabs.query({ currentWindow: true });
   
-  // Load Important URLs from storage
-  const result = await chrome.storage.local.get(['importantUrls']);
-  const importantUrls = result.importantUrls || [];
+  // Load Important domains from storage
+  const result = await chrome.storage.local.get(['importantDomains']);
+  const importantDomains = result.importantDomains || [];
   
   // Group tabs by domain
   const tabsByDomain = {};
@@ -265,13 +287,13 @@ async function organizeTabs() {
       }
       seenUrls.add(urlKey);
       
-      // Check if tab is marked as Important
-      if (importantUrls.includes(tab.url)) {
+      const domain = getRootDomain(url.hostname);
+      
+      // Check if domain is marked as Important
+      if (importantDomains.includes(domain)) {
         importantTabs.push(tab);
         continue;
       }
-      
-      const domain = getRootDomain(url.hostname);
 
       // Add tab to domain group
       if (!tabsByDomain[domain]) {

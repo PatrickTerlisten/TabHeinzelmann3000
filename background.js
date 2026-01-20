@@ -129,26 +129,40 @@ async function removeTabFromImportant(tabId) {
 
 // Helper functions for Important URLs
 async function addImportantUrl(url) {
-  const result = await chrome.storage.local.get(['importantUrls']);
-  const importantUrls = result.importantUrls || [];
-  
-  if (!importantUrls.includes(url)) {
-    importantUrls.push(url);
-    await chrome.storage.local.set({ importantUrls: importantUrls });
+  try {
+    const urlObj = new URL(url);
+    const domain = getRootDomain(urlObj.hostname);
+    
+    const result = await chrome.storage.local.get(['importantDomains']);
+    const importantDomains = result.importantDomains || [];
+    
+    if (!importantDomains.includes(domain)) {
+      importantDomains.push(domain);
+      await chrome.storage.local.set({ importantDomains: importantDomains });
+    }
+  } catch (error) {
+    console.error('Error adding important domain:', error);
   }
 }
 
 async function removeImportantUrl(url) {
-  const result = await chrome.storage.local.get(['importantUrls']);
-  const importantUrls = result.importantUrls || [];
-  
-  const filtered = importantUrls.filter(u => u !== url);
-  await chrome.storage.local.set({ importantUrls: filtered });
+  try {
+    const urlObj = new URL(url);
+    const domain = getRootDomain(urlObj.hostname);
+    
+    const result = await chrome.storage.local.get(['importantDomains']);
+    const importantDomains = result.importantDomains || [];
+    
+    const filtered = importantDomains.filter(d => d !== domain);
+    await chrome.storage.local.set({ importantDomains: filtered });
+  } catch (error) {
+    console.error('Error removing important domain:', error);
+  }
 }
 
 async function getImportantUrls() {
-  const result = await chrome.storage.local.get(['importantUrls']);
-  return result.importantUrls || [];
+  const result = await chrome.storage.local.get(['importantDomains']);
+  return result.importantDomains || [];
 }
 
 // Extract root domain from hostname
@@ -226,7 +240,7 @@ async function autoOrganizeTabs() {
 
 async function organizeWindowTabs(windowId) {
   const tabs = await chrome.tabs.query({ windowId: windowId });
-  const importantUrls = await getImportantUrls();
+  const importantDomains = await getImportantUrls(); // Returns domains now
   
   // Group tabs by domain
   const tabsByDomain = {};
@@ -235,14 +249,13 @@ async function organizeWindowTabs(windowId) {
   for (const tab of tabs) {
     try {
       const url = new URL(tab.url);
+      const domain = getRootDomain(url.hostname);
       
-      // Check if tab is marked as Important
-      if (importantUrls.includes(tab.url)) {
+      // Check if domain is marked as Important
+      if (importantDomains.includes(domain)) {
         importantTabs.push(tab);
         continue;
       }
-      
-      const domain = getRootDomain(url.hostname);
 
       if (!tabsByDomain[domain]) {
         tabsByDomain[domain] = [];
