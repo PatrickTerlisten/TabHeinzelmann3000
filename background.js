@@ -131,13 +131,13 @@ async function removeTabFromImportant(tabId) {
 async function addImportantUrl(url) {
   try {
     const urlObj = new URL(url);
-    const domain = getRootDomain(urlObj.hostname);
+    const hostname = urlObj.hostname; // Use full hostname including subdomains
     
     const result = await chrome.storage.local.get(['importantDomains']);
     const importantDomains = result.importantDomains || [];
     
-    if (!importantDomains.includes(domain)) {
-      importantDomains.push(domain);
+    if (!importantDomains.includes(hostname)) {
+      importantDomains.push(hostname);
       await chrome.storage.local.set({ importantDomains: importantDomains });
     }
   } catch (error) {
@@ -148,12 +148,12 @@ async function addImportantUrl(url) {
 async function removeImportantUrl(url) {
   try {
     const urlObj = new URL(url);
-    const domain = getRootDomain(urlObj.hostname);
+    const hostname = urlObj.hostname; // Use full hostname including subdomains
     
     const result = await chrome.storage.local.get(['importantDomains']);
     const importantDomains = result.importantDomains || [];
     
-    const filtered = importantDomains.filter(d => d !== domain);
+    const filtered = importantDomains.filter(d => d !== hostname);
     await chrome.storage.local.set({ importantDomains: filtered });
   } catch (error) {
     console.error('Error removing important domain:', error);
@@ -219,6 +219,69 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   }
 });
 
+// Listener for removed tabs - check if groups need cleanup
+chrome.tabs.onRemoved.addListener(async (tabId, removeInfo) => {
+  // Quick cleanup: Check if any group now has only 1 tab and move it to Unsorted
+  await checkAndMoveSingleTabsToUnsorted(removeInfo.windowId);
+  
+  // Also schedule full reorganization
+  scheduleOrganization();
+});
+
+// Quick function to move single tabs from groups to Unsorted
+async function checkAndMoveSingleTabsToUnsorted(windowId) {
+  try {
+    // Get all tab groups in this window
+    const groups = await chrome.tabGroups.query({ windowId: windowId });
+    const importantDomains = await getImportantUrls();
+    
+    for (const group of groups) {
+      // Skip Important and Unsorted groups
+      if (group.title === 'Important' || group.title === 'Unsorted') {
+        continue;
+      }
+      
+      // Get tabs in this group
+      const tabsInGroup = await chrome.tabs.query({ groupId: group.id });
+      
+      // If only 1 tab left in a domain group, move it to Unsorted
+      if (tabsInGroup.length === 1) {
+        const tab = tabsInGroup[0];
+        
+        // Ungroup the tab
+        await chrome.tabs.ungroup([tab.id]);
+        
+        // Find or create Unsorted group
+        const unsortedGroup = groups.find(g => g.title === 'Unsorted');
+        
+        if (unsortedGroup) {
+          // Add to existing Unsorted group
+          await chrome.tabs.group({ groupId: unsortedGroup.id, tabIds: [tab.id] });
+        } else {
+          // Create new Unsorted group
+          const newGroupId = await chrome.tabs.group({ tabIds: [tab.id] });
+          await chrome.tabGroups.update(newGroupId, {
+            title: 'Unsorted',
+            color: 'grey',
+            collapsed: false
+          });
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error in quick single tab cleanup:', error);
+  }
+}
+
+// Listener for tabs moved between groups
+chrome.tabs.onAttached.addListener(() => {
+  scheduleOrganization();
+});
+
+chrome.tabs.onDetached.addListener(() => {
+  scheduleOrganization();
+});
+
 async function autoOrganizeTabs() {
   if (organizingInProgress) return;
   
@@ -240,7 +303,7 @@ async function autoOrganizeTabs() {
 
 async function organizeWindowTabs(windowId) {
   const tabs = await chrome.tabs.query({ windowId: windowId });
-  const importantDomains = await getImportantUrls(); // Returns domains now
+  const importantDomains = await getImportantUrls(); // Returns hostnames now
   
   // Group tabs by domain
   const tabsByDomain = {};
@@ -249,13 +312,16 @@ async function organizeWindowTabs(windowId) {
   for (const tab of tabs) {
     try {
       const url = new URL(tab.url);
-      const domain = getRootDomain(url.hostname);
+      const hostname = url.hostname; // Full hostname with subdomains
       
-      // Check if domain is marked as Important
-      if (importantDomains.includes(domain)) {
+      // Check if hostname is marked as Important
+      if (importantDomains.includes(hostname)) {
         importantTabs.push(tab);
         continue;
       }
+      
+      // For regular grouping, use root domain
+      const domain = getRootDomain(hostname);
 
       if (!tabsByDomain[domain]) {
         tabsByDomain[domain] = [];
