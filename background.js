@@ -329,6 +329,13 @@ async function autoOrganizeTabs() {
 }
 
 async function organizeWindowTabs(windowId) {
+  // Save collapsed state of existing groups BEFORE reorganization
+  const existingGroups = await chrome.tabGroups.query({ windowId: windowId });
+  const collapsedState = new Map();
+  for (const group of existingGroups) {
+    collapsedState.set(group.title, group.collapsed);
+  }
+  
   const tabs = await chrome.tabs.query({ windowId: windowId });
   const importantDomains = await getImportantUrls(); // Returns hostnames now
   
@@ -469,7 +476,7 @@ async function organizeWindowTabs(windowId) {
           .then(groupId => chrome.tabGroups.update(groupId, {
             title: 'Important',
             color: 'red',
-            collapsed: false
+            collapsed: collapsedState.get('Important') ?? false
           }))
       ).catch(error => console.error('Error grouping Important:', error))
     );
@@ -492,7 +499,7 @@ async function organizeWindowTabs(windowId) {
           .then(groupId => chrome.tabGroups.update(groupId, {
             title: domain,
             color: color,
-            collapsed: false
+            collapsed: collapsedState.get(domain) ?? false
           }))
       ).catch(error => console.error('Error grouping:', error))
     );
@@ -515,7 +522,7 @@ async function organizeWindowTabs(windowId) {
           .then(groupId => chrome.tabGroups.update(groupId, {
             title: 'Unsorted',
             color: 'grey',
-            collapsed: false
+            collapsed: collapsedState.get('Unsorted') ?? false
           }))
       ).catch(error => console.error('Error grouping Unsorted:', error))
     );

@@ -157,10 +157,11 @@ tab-organizer/
 ## Notes
 
 - URLs like `chrome://` or `edge://` cannot be grouped (browser restriction)
-- **Automatic organization**: New tabs are automatically organized (pauses for 20 seconds when you manually move tabs between windows)
+- **Automatic organization**: New tabs are automatically organized with a 2-second delay per window
 - Single tabs (domain appears only once) are collected in the "Unsorted" group
 - **Smart Single-Tab Detection**: When a tab is closed and only one tab remains in a group, it's automatically moved to "Unsorted" instantly (this still works automatically)
 - **True Multi-Window Support**: Each window is organized independently. When you move a tab to a different window, only that window's organization is triggered - the tab stays in its new window permanently.
+- **Collapsed state preserved**: Groups you manually collapse stay collapsed after reorganization
 - The extension is highly optimized for fast performance with parallel batch operations
 - All move and grouping operations are executed in parallel for maximum speed
 - **Important marking is instant**: Marking/unmarking tabs as Important uses a fast single-tab operation
@@ -179,9 +180,10 @@ You can customize the extension to your preferences:
 
 ## Version
 
-Current Version: 1.0.0
+Current Version: 1.0.1
 
 **Changelog:**
+- v1.0.1: **Fixed collapsed groups** - Groups that you manually collapse now stay collapsed when tabs are reorganized. The extension remembers and restores the collapsed state.
 - v1.0.0: **MAJOR FIX** - True multi-window support! Auto-organization now works per-window only. When you move a tab to a new window, it stays there. Each window is organized independently.
 - v0.3.0: MAJOR FIX for multi-window - When tabs are manually moved between windows, ALL auto-organization pauses globally for 20 seconds. This completely prevents the moved tab from being organized back.
 - v0.2.4: Improved multi-window fix - now pauses auto-organization for entire windows (15 seconds) when tabs are manually moved to them
