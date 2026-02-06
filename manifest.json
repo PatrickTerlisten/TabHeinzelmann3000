@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Tab Heinzelmann 3000",
-  "version": "0.2.1",
+  "version": "1.0.0",
   "description": "Groups tabs by domain, removes duplicates, and sorts alphabetically",
   "permissions": [
     "tabs",

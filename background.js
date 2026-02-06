@@ -1,6 +1,5 @@
 // Automatic tab organization on creation or update
 let organizingInProgress = false;
-let organizationTimeout = null;
 
 // Update badge with tab count
 async function updateBadge() {
@@ -51,7 +50,8 @@ chrome.tabs.onDetached.addListener(() => {
 // Message Listener for manual organization from popup
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'organize') {
-    scheduleOrganization();
+    // User clicked "Organize Now" - organize ALL windows
+    autoOrganizeTabs();
   } else if (message.action === 'moveToImportant') {
     // Quick move without full reorganization
     moveTabToImportant(message.tabId);
@@ -120,8 +120,10 @@ async function removeTabFromImportant(tabId) {
       await chrome.tabs.ungroup([tabId]);
     }
     
-    // Optionally trigger a light reorganization after a delay
-    setTimeout(() => scheduleOrganization(), 1000);
+    // Optionally trigger a light reorganization of this window only
+    if (tab.windowId) {
+      setTimeout(() => scheduleOrganizationForWindow(tab.windowId), 1000);
+    }
   } catch (error) {
     console.error('Error removing tab from Important:', error);
   }
@@ -192,40 +194,48 @@ function getRootDomain(hostname) {
   return parts.slice(-2).join('.');
 }
 
-// Debounce function for delayed execution
-function scheduleOrganization() {
-  if (organizationTimeout) {
-    clearTimeout(organizationTimeout);
+// Track scheduling timeouts per window (key: windowId, value: timeout)
+const windowOrganizationTimeouts = new Map();
+
+function scheduleOrganizationForWindow(windowId) {
+  // Clear existing timeout for this specific window
+  if (windowOrganizationTimeouts.has(windowId)) {
+    clearTimeout(windowOrganizationTimeouts.get(windowId));
   }
   
-  // Wait 2 seconds after last tab event before organizing (increased from 1 second)
-  organizationTimeout = setTimeout(async () => {
+  // Wait 2 seconds after last tab event before organizing THIS window only
+  const timeout = setTimeout(async () => {
     if (!organizingInProgress) {
-      await autoOrganizeTabs();
+      await organizeSpecificWindow(windowId);
     }
+    windowOrganizationTimeouts.delete(windowId);
   }, 2000);
+  
+  windowOrganizationTimeouts.set(windowId, timeout);
 }
 
-// Listener for newly created tabs
+// Listener for newly created tabs - organize only the window where tab was created
 chrome.tabs.onCreated.addListener((tab) => {
-  scheduleOrganization();
-});
-
-// Listener for updated tabs (when URL changes)
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-  // Only organize when URL is fully loaded
-  if (changeInfo.status === 'complete' && changeInfo.url) {
-    scheduleOrganization();
+  if (tab.windowId) {
+    scheduleOrganizationForWindow(tab.windowId);
   }
 });
 
-// Listener for removed tabs - check if groups need cleanup
+// Listener for updated tabs (when URL changes) - organize only that window
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  // Only organize when URL is fully loaded
+  if (changeInfo.status === 'complete' && changeInfo.url && tab.windowId) {
+    scheduleOrganizationForWindow(tab.windowId);
+  }
+});
+
+// Listener for removed tabs - only for single-tab cleanup, no full reorganization
 chrome.tabs.onRemoved.addListener(async (tabId, removeInfo) => {
   // Quick cleanup: Check if any group now has only 1 tab and move it to Unsorted
   await checkAndMoveSingleTabsToUnsorted(removeInfo.windowId);
   
-  // Also schedule full reorganization
-  scheduleOrganization();
+  // NO automatic reorganization anymore
+  // scheduleOrganization();
 });
 
 // Quick function to move single tabs from groups to Unsorted
@@ -273,22 +283,39 @@ async function checkAndMoveSingleTabsToUnsorted(windowId) {
   }
 }
 
-// Listener for tabs moved between groups
-chrome.tabs.onAttached.addListener(() => {
-  scheduleOrganization();
-});
+// New function: Organize only a specific window (called by scheduled events)
+async function organizeSpecificWindow(windowId) {
+  if (organizingInProgress) return;
+  
+  try {
+    organizingInProgress = true;
+    
+    // Verify window still exists
+    try {
+      await chrome.windows.get(windowId);
+    } catch (error) {
+      console.log(`Window ${windowId} no longer exists, skipping organization`);
+      organizingInProgress = false;
+      return;
+    }
+    
+    console.log(`Organizing window ${windowId}`);
+    await organizeWindowTabs(windowId);
+  } catch (error) {
+    console.error(`Error organizing window ${windowId}:`, error);
+  } finally {
+    organizingInProgress = false;
+  }
+}
 
-chrome.tabs.onDetached.addListener(() => {
-  scheduleOrganization();
-});
-
+// Legacy function for "Organize Now" button - organizes ALL windows
 async function autoOrganizeTabs() {
   if (organizingInProgress) return;
   
   try {
     organizingInProgress = true;
     
-    // Get all tabs in the current window
+    // Organize all windows (only used when user clicks "Organize Now")
     const windows = await chrome.windows.getAll({ populate: true });
     
     for (const window of windows) {

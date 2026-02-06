@@ -12,7 +12,7 @@ A browser extension for Microsoft Edge that automatically groups tabs by domain,
 - **Remove Duplicates**: Duplicate tabs (same URL) are automatically closed
 - **Alphabetical Sorting**: Groups and tabs within groups are sorted alphabetically
 - **Color Coding**: Each group gets its own color for better overview
-- **Automatic Organization**: New tabs are automatically sorted (about 2 seconds after opening)
+- **Automatic Organization**: New tabs are automatically organized after 2 seconds (pauses for 20 seconds when tabs are moved between windows)
 - **Persistent Marks**: Important URLs remain marked even after closing and reopening
 - **Optimized Performance**: Fast batch operations for smooth tab organization
 
@@ -32,6 +32,12 @@ A browser extension for Microsoft Edge that automatically groups tabs by domain,
 1. Click on the Tab Heinzelmann 3000 icon in the browser toolbar
 2. Click the "Organize Now" button
 3. Your tabs will be immediately organized and duplicates removed
+4. **Note:** Automatic organization is disabled - you must manually click to organize tabs
+
+**Why is automatic organization disabled?**
+- Prevents tabs from being moved back when you manually arrange multiple windows
+- Gives you full control over your window layout
+- Single-tab cleanup still works automatically
 
 **Mark Important URLs:**
 1. **Button in Popup:**
@@ -151,14 +157,14 @@ tab-organizer/
 ## Notes
 
 - URLs like `chrome://` or `edge://` cannot be grouped (browser restriction)
-- Automatic organization occurs with 2 second delay to bundle multiple tab changes
+- **Automatic organization**: New tabs are automatically organized (pauses for 20 seconds when you manually move tabs between windows)
 - Single tabs (domain appears only once) are collected in the "Unsorted" group
-- **Smart Single-Tab Detection**: When a tab is closed and only one tab remains in a group, it's automatically moved to "Unsorted" instantly
+- **Smart Single-Tab Detection**: When a tab is closed and only one tab remains in a group, it's automatically moved to "Unsorted" instantly (this still works automatically)
+- **True Multi-Window Support**: Each window is organized independently. When you move a tab to a different window, only that window's organization is triggered - the tab stays in its new window permanently.
 - The extension is highly optimized for fast performance with parallel batch operations
 - All move and grouping operations are executed in parallel for maximum speed
-- **Important marking is instant**: Marking/unmarking tabs as Important uses a fast single-tab operation without triggering full reorganization
+- **Important marking is instant**: Marking/unmarking tabs as Important uses a fast single-tab operation
 - **Batch tab closing**: Closing tabs is done in batches of 20 with progress updates to prevent browser freezing
-- Full reorganization only happens when you click "Organize Now" or when new tabs are opened
 - Hover over the extension icon to see a larger tooltip with the exact tab count
 
 ## Customization
@@ -171,9 +177,16 @@ You can customize the extension to your preferences:
 
 ## Version
 
-Current Version: 0.2.1
+## Version
+
+Current Version: 1.0.0
 
 **Changelog:**
+- v1.0.0: **MAJOR FIX** - True multi-window support! Auto-organization now works per-window only. When you move a tab to a new window, it stays there. Each window is organized independently.
+- v0.3.0: MAJOR FIX for multi-window - When tabs are manually moved between windows, ALL auto-organization pauses globally for 20 seconds. This completely prevents the moved tab from being organized back.
+- v0.2.4: Improved multi-window fix - now pauses auto-organization for entire windows (15 seconds) when tabs are manually moved to them
+- v0.2.3: Improved multi-window support - tabs manually moved to new windows are now excluded from auto-organization for 10 seconds
+- v0.2.2: Fixed bug where tabs manually moved to new windows were automatically moved back
 - v0.2.1: Fixed bug where single tabs remained in domain groups instead of moving to Unsorted
 - v0.2.0: Changed Important marking to use full hostname (with subdomains) instead of root domain
 - v0.1.0: Initial release
