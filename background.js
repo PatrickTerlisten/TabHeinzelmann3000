@@ -205,10 +205,15 @@ function scheduleOrganizationForWindow(windowId) {
   
   // Wait 2 seconds after last tab event before organizing THIS window only
   const timeout = setTimeout(async () => {
-    if (!organizingInProgress) {
-      await organizeSpecificWindow(windowId);
-    }
     windowOrganizationTimeouts.delete(windowId);
+    
+    if (organizingInProgress) {
+      // If already organizing, reschedule instead of skipping
+      scheduleOrganizationForWindow(windowId);
+      return;
+    }
+    
+    await organizeSpecificWindow(windowId);
   }, 2000);
   
   windowOrganizationTimeouts.set(windowId, timeout);
@@ -221,13 +226,61 @@ chrome.tabs.onCreated.addListener((tab) => {
   }
 });
 
-// Listener for updated tabs (when URL changes) - organize only that window
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-  // Only organize when URL is fully loaded
-  if (changeInfo.status === 'complete' && changeInfo.url && tab.windowId) {
+// Listener for updated tabs - check for duplicates and trigger organization
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+  // Only act when a tab finishes loading
+  if (changeInfo.status !== 'complete' || !tab.windowId) return;
+  
+  // Check for duplicate tabs (same URL already open in another tab)
+  const isDuplicate = await closeDuplicateTab(tabId, tab);
+  
+  // Only reorganize if tab was not closed
+  if (!isDuplicate) {
     scheduleOrganizationForWindow(tab.windowId);
   }
 });
+
+// Close duplicate tab if same URL already exists elsewhere
+async function closeDuplicateTab(tabId, tab) {
+  try {
+    // Skip special browser pages
+    if (!tab.url || tab.url.startsWith('chrome://') || tab.url.startsWith('edge://') || tab.url.startsWith('about:')) {
+      return false;
+    }
+    
+    // Normalize URL: remove trailing slash and fragment for comparison
+    const normalizeUrl = (url) => url.replace(/#.*$/, '').replace(/\/$/, '');
+    const normalizedUrl = normalizeUrl(tab.url);
+    
+    // Get all tabs in the same window only
+    const allTabs = await chrome.tabs.query({ windowId: tab.windowId });
+    
+    // Find a tab with the same URL that is NOT the current tab
+    const duplicate = allTabs.find(t => 
+      t.id !== tabId && 
+      t.url && 
+      normalizeUrl(t.url) === normalizedUrl
+    );
+    
+    if (duplicate) {
+      console.log(`Duplicate tab detected: closing tab ${tabId}, switching to existing tab ${duplicate.id}`);
+      
+      // Switch focus to the existing tab
+      await chrome.tabs.update(duplicate.id, { active: true });
+      await chrome.windows.update(duplicate.windowId, { focused: true });
+      
+      // Close the duplicate
+      await chrome.tabs.remove(tabId);
+      
+      return true;
+    }
+    
+    return false;
+  } catch (error) {
+    console.error('Error checking for duplicate tab:', error);
+    return false;
+  }
+}
 
 // Listener for removed tabs - only for single-tab cleanup, no full reorganization
 chrome.tabs.onRemoved.addListener(async (tabId, removeInfo) => {

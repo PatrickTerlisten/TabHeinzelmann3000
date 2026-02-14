@@ -9,7 +9,7 @@ A browser extension for Microsoft Edge that automatically groups tabs by domain,
 - **Tab Count Badge**: Extension icon displays the total number of open tabs across all windows
 - **Root Domain Grouping**: Tabs are grouped by root domain (e.g., support.citrix.com and citrix.com → citrix.com group)
 - **Unsorted Group**: Single tabs (domain appears only once) are collected in a special "Unsorted" group
-- **Remove Duplicates**: Duplicate tabs (same URL) are automatically closed
+- **Duplicate Prevention**: When a tab is opened whose URL already exists, the duplicate is automatically closed and focus switches to the existing tab — in real time, not just during reorganization
 - **Alphabetical Sorting**: Groups and tabs within groups are sorted alphabetically
 - **Color Coding**: Each group gets its own color for better overview
 - **Automatic Organization**: New tabs are automatically organized after 2 seconds (pauses for 20 seconds when tabs are moved between windows)
@@ -180,11 +180,12 @@ You can customize the extension to your preferences:
 
 ## Version
 
-Current Version: 1.0.1
+Current Version: 1.1.0
 
 **Changelog:**
-- v1.0.1: **Fixed collapsed groups** - Groups that you manually collapse now stay collapsed when tabs are reorganized. The extension remembers and restores the collapsed state.
-- v1.0.0: **MAJOR FIX** - True multi-window support! Auto-organization now works per-window only. When you move a tab to a new window, it stays there. Each window is organized independently.
+- v1.1.0: **New feature: Duplicate tab prevention** - When a tab is opened whose URL already exists in another tab, the duplicate is automatically closed and focus switches to the existing tab.
+- v1.0.2: Fixed tab sorting trigger - `onUpdated` now correctly fires on `status === 'complete'`
+- v1.0.1: Fixed collapsed groups - Groups stay collapsed after reorganization
 - v0.3.0: MAJOR FIX for multi-window - When tabs are manually moved between windows, ALL auto-organization pauses globally for 20 seconds. This completely prevents the moved tab from being organized back.
 - v0.2.4: Improved multi-window fix - now pauses auto-organization for entire windows (15 seconds) when tabs are manually moved to them
 - v0.2.3: Improved multi-window support - tabs manually moved to new windows are now excluded from auto-organization for 10 seconds
