@@ -10,7 +10,7 @@ A browser extension for Microsoft Edge that automatically groups tabs by domain,
 - **Root Domain Grouping**: Tabs are grouped by root domain (e.g., support.citrix.com and citrix.com → citrix.com group)
 - **Unsorted Group**: Single tabs (domain appears only once) are collected in a special "Unsorted" group
 - **Duplicate Prevention**: When a tab is opened whose URL already exists, the duplicate is automatically closed and focus switches to the existing tab — in real time, not just during reorganization
-- **Alphabetical Sorting**: Groups and tabs within groups are sorted alphabetically
+- **Smart Tab Sorting**: Domain groups are sorted alphabetically. Within each group, tabs use MRU (Most Recently Used) order — tabs you've viewed for 5+ seconds move to the top of their group
 - **Color Coding**: Each group gets its own color for better overview
 - **Automatic Organization**: New tabs are automatically organized after 2 seconds (pauses for 20 seconds when tabs are moved between windows)
 - **Persistent Marks**: Important URLs remain marked even after closing and reopening
@@ -162,6 +162,7 @@ tab-organizer/
 - **Smart Single-Tab Detection**: When a tab is closed and only one tab remains in a group, it's automatically moved to "Unsorted" instantly (this still works automatically)
 - **True Multi-Window Support**: Each window is organized independently. When you move a tab to a different window, only that window's organization is triggered - the tab stays in its new window permanently.
 - **Collapsed state preserved**: Groups you manually collapse stay collapsed after reorganization
+- **MRU (Most Recently Used) sorting**: Tabs within groups are sorted by usage, not alphabetically. When you view a tab for 5+ seconds, it automatically moves to the top of its group. This keeps frequently used tabs easily accessible.
 - The extension is highly optimized for fast performance with parallel batch operations
 - All move and grouping operations are executed in parallel for maximum speed
 - **Important marking is instant**: Marking/unmarking tabs as Important uses a fast single-tab operation
@@ -180,19 +181,17 @@ You can customize the extension to your preferences:
 
 ## Version
 
-Current Version: 1.1.0
+Current Version: 1.3.0
 
 **Changelog:**
-- v1.1.0: **New feature: Duplicate tab prevention** - When a tab is opened whose URL already exists in another tab, the duplicate is automatically closed and focus switches to the existing tab.
+- v1.3.0: **MRU (Most Recently Used) sorting within groups** - Tabs are no longer sorted by URL within groups. Instead, when a tab is active for 5+ seconds, it moves to the top of its group. Most recently used tabs appear first.
+- v1.2.1: Sorting by URL instead of title - Tabs sorted by URL to prevent re-sorting when page titles change
+- v1.2.0: **Export/Import feature** - Important domains can be exported/imported via text file
+- v1.1.1: Fixed duplicate detection to only work within the same window (not across all windows).
+- v1.1.0: **New feature: Duplicate tab prevention** - When a tab is opened whose URL already exists in another tab (same window), the duplicate is automatically closed and focus switches to the existing tab.
 - v1.0.2: Fixed tab sorting trigger - `onUpdated` now correctly fires on `status === 'complete'`
 - v1.0.1: Fixed collapsed groups - Groups stay collapsed after reorganization
-- v0.3.0: MAJOR FIX for multi-window - When tabs are manually moved between windows, ALL auto-organization pauses globally for 20 seconds. This completely prevents the moved tab from being organized back.
-- v0.2.4: Improved multi-window fix - now pauses auto-organization for entire windows (15 seconds) when tabs are manually moved to them
-- v0.2.3: Improved multi-window support - tabs manually moved to new windows are now excluded from auto-organization for 10 seconds
-- v0.2.2: Fixed bug where tabs manually moved to new windows were automatically moved back
-- v0.2.1: Fixed bug where single tabs remained in domain groups instead of moving to Unsorted
-- v0.2.0: Changed Important marking to use full hostname (with subdomains) instead of root domain
-- v0.1.0: Initial release
+- v1.0.0: **MAJOR FIX** - True multi-window support! Auto-organization now works per-window only.
 
 ## License
 

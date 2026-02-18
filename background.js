@@ -1,6 +1,10 @@
 // Automatic tab organization on creation or update
 let organizingInProgress = false;
 
+// Track active tab for MRU (Most Recently Used) sorting within groups
+let activeTabTimer = null;
+let currentActiveTabId = null;
+
 // Update badge with tab count
 async function updateBadge() {
   try {
@@ -287,9 +291,66 @@ chrome.tabs.onRemoved.addListener(async (tabId, removeInfo) => {
   // Quick cleanup: Check if any group now has only 1 tab and move it to Unsorted
   await checkAndMoveSingleTabsToUnsorted(removeInfo.windowId);
   
-  // NO automatic reorganization anymore
-  // scheduleOrganization();
+  // Cancel active tab timer if this tab was active
+  if (currentActiveTabId === tabId) {
+    if (activeTabTimer) {
+      clearTimeout(activeTabTimer);
+      activeTabTimer = null;
+    }
+    currentActiveTabId = null;
+  }
 });
+
+// Listener for tab activation - move to top of group after 5 seconds
+chrome.tabs.onActivated.addListener(async (activeInfo) => {
+  // Cancel previous timer
+  if (activeTabTimer) {
+    clearTimeout(activeTabTimer);
+    activeTabTimer = null;
+  }
+  
+  currentActiveTabId = activeInfo.tabId;
+  
+  // Start 5 second timer
+  activeTabTimer = setTimeout(async () => {
+    try {
+      await moveTabToTopOfGroup(activeInfo.tabId);
+    } catch (error) {
+      console.error('Error moving tab to top:', error);
+    }
+    activeTabTimer = null;
+  }, 5000);
+});
+
+// Move a tab to the first position within its group
+async function moveTabToTopOfGroup(tabId) {
+  try {
+    const tab = await chrome.tabs.get(tabId);
+    
+    // Skip if tab has no group
+    if (tab.groupId === -1) {
+      return;
+    }
+    
+    // Get all tabs in the same group
+    const groupTabs = await chrome.tabs.query({ groupId: tab.groupId });
+    
+    // Skip if already at first position
+    if (groupTabs.length === 0 || groupTabs[0].id === tabId) {
+      return;
+    }
+    
+    // Find the first tab in the group to get its index
+    const firstTabInGroup = groupTabs.reduce((min, t) => t.index < min.index ? t : min, groupTabs[0]);
+    
+    // Move the active tab to the first position of the group
+    await chrome.tabs.move(tabId, { index: firstTabInGroup.index });
+    
+    console.log(`Moved tab ${tabId} to top of group ${tab.groupId}`);
+  } catch (error) {
+    console.error('Error in moveTabToTopOfGroup:', error);
+  }
+}
 
 // Quick function to move single tabs from groups to Unsorted
 async function checkAndMoveSingleTabsToUnsorted(windowId) {
@@ -420,18 +481,15 @@ async function organizeWindowTabs(windowId) {
     }
   }
 
-  // Sort Important tabs alphabetically by title
-  importantTabs.sort((a, b) => 
-    a.title.toLowerCase().localeCompare(b.title.toLowerCase())
-  );
-
+  // Important tabs: keep original order (no sorting)
+  
   // Separate domains with multiple tabs and single tabs
   const multiTabDomains = {};
   const singleTabs = [];
 
   for (const [domain, domainTabs] of Object.entries(tabsByDomain)) {
     if (domainTabs.length > 1) {
-      multiTabDomains[domain] = domainTabs;
+      multiTabDomains[domain] = domainTabs; // Keep original order, no sorting
     } else {
       singleTabs.push(...domainTabs);
     }
@@ -442,17 +500,7 @@ async function organizeWindowTabs(windowId) {
     a.toLowerCase().localeCompare(b.toLowerCase())
   );
 
-  // Sort single tabs alphabetically by title
-  singleTabs.sort((a, b) => 
-    a.title.toLowerCase().localeCompare(b.title.toLowerCase())
-  );
-
-  // Sort tabs within each domain alphabetically by title
-  for (const domain of sortedDomains) {
-    multiTabDomains[domain].sort((a, b) => 
-      a.title.toLowerCase().localeCompare(b.title.toLowerCase())
-    );
-  }
+  // Single tabs: keep original order (no sorting)
 
   // Colors for groups
   const colors = ['blue', 'red', 'yellow', 'green', 'pink', 'purple', 'cyan', 'orange'];

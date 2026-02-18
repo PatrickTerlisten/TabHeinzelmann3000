@@ -231,6 +231,82 @@ document.addEventListener('DOMContentLoaded', function() {
     const filtered = importantDomains.filter(d => d !== hostname);
     await chrome.storage.local.set({ importantDomains: filtered });
   }
+
+  // Export: Write domains to a text file, one per line
+  document.getElementById('exportBtn').addEventListener('click', async () => {
+    const result = await chrome.storage.local.get(['importantDomains']);
+    const importantDomains = result.importantDomains || [];
+
+    if (importantDomains.length === 0) {
+      statusDiv.className = 'status error';
+      statusDiv.textContent = 'No domains to export.';
+      statusDiv.style.display = 'block';
+      return;
+    }
+
+    const text = importantDomains.join('\n');
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'important-domains.txt';
+    a.click();
+    URL.revokeObjectURL(url);
+
+    statusDiv.className = 'status success';
+    statusDiv.textContent = `Exported ${importantDomains.length} domain(s).`;
+    statusDiv.style.display = 'block';
+  });
+
+  // Import: Read domains from a text file, merge with existing
+  document.getElementById('importBtn').addEventListener('click', () => {
+    document.getElementById('importFile').click();
+  });
+
+  document.getElementById('importFile').addEventListener('change', async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+
+      // Parse lines: trim whitespace, skip empty lines
+      const newDomains = text
+        .split('\n')
+        .map(line => line.trim())
+        .filter(line => line.length > 0);
+
+      if (newDomains.length === 0) {
+        statusDiv.className = 'status error';
+        statusDiv.textContent = 'File is empty or contains no valid domains.';
+        statusDiv.style.display = 'block';
+        return;
+      }
+
+      // Merge with existing domains (no duplicates)
+      const result = await chrome.storage.local.get(['importantDomains']);
+      const existing = result.importantDomains || [];
+      const merged = [...new Set([...existing, ...newDomains])];
+
+      await chrome.storage.local.set({ importantDomains: merged });
+
+      const added = merged.length - existing.length;
+      statusDiv.className = 'status success';
+      statusDiv.textContent = `Imported ${added} new domain(s). Total: ${merged.length}.`;
+      statusDiv.style.display = 'block';
+
+      await loadImportantUrls();
+      await checkCurrentTab();
+    } catch (error) {
+      statusDiv.className = 'status error';
+      statusDiv.textContent = 'Error reading file: ' + error.message;
+      statusDiv.style.display = 'block';
+    }
+
+    // Reset file input so the same file can be imported again
+    event.target.value = '';
+  });
 });
 
 // Extract root domain from hostname

@@ -23,20 +23,15 @@
       Close All Except Important
     </button>
     
-    <div class="info">
-      <p class="info-text">
-        <strong>Auto-Organization:</strong> New tabs are automatically sorted (per window, no cross-window moves)
-      </p>
-      <p class="info-text">
-        <strong>Duplicate Prevention:</strong> Duplicate tabs are automatically closed
-      </p>
-      <p class="info-text">
-        <strong>Single Tabs:</strong> Collected in "Unsorted" group
-      </p>
-    </div>
-    
     <div id="importantSection" class="important-section">
-      <h2>Important Domains</h2>
+      <div class="important-header">
+        <h2>Important Domains</h2>
+        <div class="important-actions">
+          <button id="exportBtn" class="btn-icon" title="Export domains as text file">⬇ Export</button>
+          <button id="importBtn" class="btn-icon" title="Import domains from text file">⬆ Import</button>
+          <input type="file" id="importFile" accept=".txt" style="display:none">
+        </div>
+      </div>
       <div id="importantList" class="important-list"></div>
     </div>
     
