@@ -181,9 +181,10 @@ You can customize the extension to your preferences:
 
 ## Version
 
-Current Version: 1.3.0
+Current Version: 1.3.1
 
 **Changelog:**
+- v1.3.1: Removed info section from popup for cleaner interface
 - v1.3.0: **MRU (Most Recently Used) sorting within groups** - Tabs are no longer sorted by URL within groups. Instead, when a tab is active for 5+ seconds, it moves to the top of its group. Most recently used tabs appear first.
 - v1.2.1: Sorting by URL instead of title - Tabs sorted by URL to prevent re-sorting when page titles change
 - v1.2.0: **Export/Import feature** - Important domains can be exported/imported via text file
